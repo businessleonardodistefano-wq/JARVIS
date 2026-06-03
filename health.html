@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000308">
+<title>JARVIS · Stack</title>
+<script src="topbar.js" defer></script>
+<script src="jarvis-core.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--cyan:#00f5ff;--cyan-dim:rgba(0,245,255,0.12);--cyan-glow:rgba(0,245,255,0.4);--blue:#0080ff;--red:#ff2244;--green:#00ff88;--orange:#ff8800;--yellow:#ffe000;--bg:#000308;--bg2:#010712;--border:rgba(0,245,255,0.15);--border-b:rgba(0,245,255,0.5);--text:#e0f4ff;--text-dim:rgba(224,244,255,0.5);--text-faint:rgba(224,244,255,0.25);--fhud:'Orbitron',monospace;--fmono:'Share Tech Mono',monospace;--fbody:'Rajdhani',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--text);font-family:var(--fbody);-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,245,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,255,0.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 20%,rgba(0,128,255,0.07),transparent),radial-gradient(ellipse 40% 60% at 80% 80%,rgba(0,245,255,0.05),transparent);pointer-events:none;z-index:0;}
+.scan-line{position:fixed;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:0.12;pointer-events:none;z-index:50;animation:scan 10s linear infinite;}
+@keyframes scan{0%{top:-2px}100%{top:100vh}}
+main{position:relative;z-index:2;max-width:900px;margin:0 auto;padding:14px 16px 100px;}
+.jh{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.jh-logo{font-family:var(--fhud);font-size:20px;font-weight:900;letter-spacing:0.3em;color:var(--cyan);text-shadow:0 0 20px var(--cyan-glow);}
+.jh-sub{font-family:var(--fmono);font-size:9px;color:var(--text-faint);letter-spacing:0.2em;margin-top:2px;}
+.sec{font-family:var(--fhud);font-size:9px;font-weight:600;letter-spacing:0.3em;color:var(--cyan);display:flex;align-items:center;gap:10px;margin:20px 0 12px;text-transform:uppercase;}
+.sec::before{content:'//';color:var(--text-faint);font-size:11px;}
+.sec::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
+.tabs{display:flex;gap:4px;margin-bottom:14px;}
+.tab{flex:1;padding:7px 4px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text-faint);font-family:var(--fhud);font-size:8px;font-weight:600;letter-spacing:0.15em;cursor:pointer;transition:all 0.2s;text-align:center;}
+.tab.active{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim);}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:10px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--card-color,var(--cyan)),transparent);}
+
+/* Progress */
+.prog-wrap{margin-bottom:16px;}
+.prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.prog-title{font-family:var(--fhud);font-size:11px;font-weight:600;color:var(--text);letter-spacing:0.1em;}
+.prog-pct{font-family:var(--fmono);font-size:12px;font-weight:700;color:var(--cyan);}
+.prog-track{height:6px;background:rgba(255,255,255,0.05);border-radius:99px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--cyan);border-radius:99px;transition:width 0.6s cubic-bezier(0.22,1,0.36,1);box-shadow:0 0 8px var(--cyan-glow);}
+.prog-sub{font-family:var(--fmono);font-size:9px;color:var(--text-faint);margin-top:5px;}
+
+/* Stack items */
+.stack-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:8px;margin-bottom:8px;transition:all 0.2s;position:relative;}
+.stack-item.taken{background:rgba(0,255,136,0.06);border-color:rgba(0,255,136,0.2);}
+.stack-item.taken .si-name{text-decoration:line-through;color:var(--text-dim);}
+.stack-item.missed{border-color:rgba(255,34,68,0.4);animation:missed-pulse 1.5s ease-in-out infinite;}
+@keyframes missed-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,34,68,0.3)}50%{box-shadow:0 0 0 6px rgba(255,34,68,0)}}
+.si-check{width:28px;height:28px;border-radius:50%;border:2px solid rgba(0,245,255,0.3);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;transition:all 0.2s;flex-shrink:0;font-family:inherit;padding:0;}
+.si-check:hover{border-color:var(--cyan);}
+.si-check.checked{background:var(--green);border-color:var(--green);color:#000308;box-shadow:0 0 12px rgba(0,255,136,0.4);}
+.si-body{flex:1;min-width:0;}
+.si-name{font-family:var(--fbody);font-size:14px;font-weight:600;color:var(--text);line-height:1.2;}
+.si-meta{font-family:var(--fmono);font-size:10px;color:var(--text-dim);margin-top:2px;}
+.si-window{font-family:var(--fmono);font-size:8px;padding:2px 7px;border-radius:2px;display:inline-block;margin-top:3px;}
+.si-window.morning{background:rgba(255,224,0,0.1);color:var(--yellow);}
+.si-window.evening{background:rgba(0,128,255,0.1);color:var(--blue);}
+.si-window.anytime{background:rgba(0,245,255,0.08);color:var(--cyan);}
+.streak-pill{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:4px;background:rgba(242,192,99,0.1);border:1px solid rgba(242,192,99,0.3);color:#F2C063;font-family:var(--fmono);font-size:10px;font-weight:700;}
+
+/* Window group */
+.wg-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.wg-icon{font-size:14px;}
+.wg-title{font-family:var(--fhud);font-size:10px;font-weight:600;color:var(--text);letter-spacing:0.12em;}
+.wg-time{font-family:var(--fmono);font-size:9px;color:var(--text-faint);}
+
+/* History table */
+.jtable{width:100%;border-collapse:collapse;}
+.jtable th{font-family:var(--fmono);font-size:8px;letter-spacing:0.15em;color:var(--text-faint);text-transform:uppercase;padding:5px 8px;border-bottom:1px solid var(--border);text-align:left;}
+.jtable td{font-family:var(--fmono);font-size:11px;padding:7px 8px;border-bottom:1px solid rgba(0,245,255,0.04);color:var(--text);}
+.jtable td.good{color:var(--green);}
+.jtable td.bad{color:var(--red);}
+.check-cell{font-size:13px;}
+.no-data{text-align:center;padding:24px;font-family:var(--fmono);font-size:11px;color:var(--text-faint);line-height:1.8;}
+</style>
+</head>
+<body>
+<div class="scan-line"></div>
+<main>
+  <div class="jh">
+    <div><div class="jh-logo">JARVIS</div><div class="jh-sub">DAILY STACK — SUPPLEMENTI</div></div>
+    <div style="text-align:right">
+      <div style="font-family:var(--fmono);font-size:13px;color:var(--cyan)" id="liveTime">--:--</div>
+      <div style="font-family:var(--fhud);font-size:9px;color:var(--text-faint);margin-top:2px;letter-spacing:0.1em" id="liveDate">--</div>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="card" style="--card-color:var(--cyan)">
+    <div class="prog-wrap">
+      <div class="prog-header">
+        <div class="prog-title">STACK GIORNALIERO</div>
+        <div class="prog-pct" id="stackPct">0%</div>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="stackBar" style="width:0%"></div></div>
+      <div class="prog-sub" id="stackSub">0 / 2 assunti oggi · reset alle 6:00</div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div class="streak-pill" id="streakPill">⚡ <span id="streakNum">0</span> day streak</div>
+      <div style="font-family:var(--fmono);font-size:9px;color:var(--text-faint)" id="streakSub">Inizia oggi!</div>
+    </div>
+  </div>
+
+  <!-- MATTINA -->
+  <div class="sec">MATTINA</div>
+  <div class="card" style="--card-color:var(--yellow)">
+    <div class="wg-header"><div class="wg-icon">🌅</div><div class="wg-title">MATTINA</div><div class="wg-time">7:00 – 10:00</div></div>
+    <div id="morningItems"></div>
+  </div>
+
+  <!-- SERA -->
+  <div class="sec">SERA</div>
+  <div class="card" style="--card-color:var(--blue)">
+    <div class="wg-header"><div class="wg-icon">🌙</div><div class="wg-title">SERA</div><div class="wg-time">21:00 – 23:00</div></div>
+    <div id="eveningItems"></div>
+  </div>
+
+  <!-- STORICO -->
+  <div class="sec">STORICO COMPLIANCE</div>
+  <div class="tabs">
+    <button class="tab active" onclick="setHistRange('week',this)">7 GIORNI</button>
+    <button class="tab" onclick="setHistRange('month',this)">MESE</button>
+    <button class="tab" onclick="setHistRange('year',this)">ANNO</button>
+  </div>
+  <div class="card" id="histCard">
+    <div class="no-data">📊 Nessun dato ancora.<br>Inizia a trackare oggi!</div>
+  </div>
+</main>
+
+<script>
+(function(){
+'use strict';
+const {J,D} = JARVIS;
+
+// Clock
+function tick(){
+  const now=new Date();
+  const te=document.getElementById('liveTime');if(te)te.textContent=now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const de=document.getElementById('liveDate');if(de)de.textContent=now.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
+}
+tick();setInterval(tick,1000);
+
+// Stack definition (fixed for Leonardo)
+const STACK = [
+  { id:'creatina', name:'Creatina Monoidrata', dose:'5g', window:'morning', note:'Sciolta in acqua o nello shaker', icon:'🏋️' },
+  { id:'magnesio', name:'Magnesio Glicinato', dose:'300mg', window:'evening', note:'30 min prima di dormire', icon:'🌙' },
+];
+
+function getActiveDate(){
+  const now=new Date();
+  if(now.getHours()<6){const d=new Date(now);d.setDate(d.getDate()-1);return D.key(d);}
+  return D.key();
+}
+function getTakenKey(date){return 'stack:taken:'+(date||getActiveDate());}
+
+function getTaken(date){return J.get(getTakenKey(date))||{};}
+function setTaken(taken,date){J.set(getTakenKey(date),taken);}
+
+function toggleTaken(id){
+  const taken=getTaken();
+  if(taken[id])delete taken[id];else taken[id]=Date.now();
+  setTaken(taken);
+  render();
+  updateStreak();
+}
+
+// Streak calc
+function updateStreak(){
+  let streak=0;
+  const todayStr=getActiveDate();
+  for(let i=1;i<=365;i++){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const key=D.key(d);
+    if(key>=todayStr)continue;
+    const taken=J.get(getTakenKey(key))||{};
+    const allTaken=STACK.every(s=>taken[s.id]);
+    if(allTaken)streak++;else break;
+  }
+  J.set('stack:streak',streak);
+  return streak;
+}
+
+function isPastCutoff(window){
+  const h=new Date().getHours()+new Date().getMinutes()/60;
+  if(window==='morning')return h>10;
+  if(window==='evening')return h>23;
+  return false;
+}
+
+function buildItem(s,taken){
+  const isTaken=!!taken[s.id];
+  const isMissed=!isTaken&&isPastCutoff(s.window);
+  const div=document.createElement('div');
+  div.className='stack-item'+(isTaken?' taken':isMissed?' missed':'');
+  div.innerHTML=`
+    <button class="si-check ${isTaken?'checked':''}" data-id="${s.id}" aria-label="Segna assunto">${isTaken?'✓':''}</button>
+    <div class="si-body">
+      <div class="si-name">${s.icon} ${s.name}</div>
+      <div class="si-meta">${s.dose} · ${s.note}</div>
+      <span class="si-window ${s.window}">${s.window==='morning'?'MATTINA':s.window==='evening'?'SERA':'SEMPRE'}</span>
+    </div>`;
+  div.querySelector('button').addEventListener('click',()=>toggleTaken(s.id));
+  return div;
+}
+
+function render(){
+  const taken=getTaken();
+  const total=STACK.length;
+  const done=STACK.filter(s=>taken[s.id]).length;
+  const pct=total?Math.round(done/total*100):0;
+
+  document.getElementById('stackPct').textContent=pct+'%';
+  document.getElementById('stackBar').style.width=pct+'%';
+  document.getElementById('stackSub').textContent=`${done} / ${total} assunti oggi · reset alle 6:00`;
+
+  // Streak
+  const streak=J.get('stack:streak')||0;
+  document.getElementById('streakNum').textContent=streak;
+  document.getElementById('streakSub').textContent=streak>0?`${streak} giorni consecutivi 🔥`:'Inizia oggi!';
+  document.getElementById('streakPill').style.background=streak>0?'rgba(242,192,99,0.15)':'rgba(255,255,255,0.04)';
+  document.getElementById('streakPill').style.borderColor=streak>0?'rgba(242,192,99,0.4)':'rgba(255,255,255,0.08)';
+  document.getElementById('streakPill').style.color=streak>0?'#F2C063':'var(--text-faint)';
+
+  const morning=STACK.filter(s=>s.window==='morning');
+  const evening=STACK.filter(s=>s.window==='evening');
+  const mEl=document.getElementById('morningItems');mEl.innerHTML='';
+  morning.forEach(s=>mEl.appendChild(buildItem(s,taken)));
+  const eEl=document.getElementById('eveningItems');eEl.innerHTML='';
+  evening.forEach(s=>eEl.appendChild(buildItem(s,taken)));
+
+  renderHistory();
+}
+
+let histRange='week';
+window.setHistRange=function(r,btn){
+  histRange=r;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderHistory();
+};
+
+function renderHistory(){
+  const el=document.getElementById('histCard');
+  const days=histRange==='week'?7:histRange==='month'?30:365;
+  const keys=D.rangeKeys(days).reverse();
+  const rows=keys.map(k=>{
+    const taken=J.get(getTakenKey(k))||{};
+    const allTaken=STACK.every(s=>taken[s.id]);
+    const noneTaken=STACK.every(s=>!taken[s.id]);
+    const cells=STACK.map(s=>`<td class="check-cell">${taken[s.id]?'✅':'⬜'}</td>`).join('');
+    return`<tr>
+      <td>${D.fmt(D.fromKey(k))}</td>
+      ${cells}
+      <td class="${allTaken?'good':noneTaken?'bad':''}">${allTaken?'COMPLETO':noneTaken?'SALTATO':'PARZIALE'}</td>
+    </tr>`;
+  }).join('');
+  const headers=STACK.map(s=>`<th>${s.name.split(' ')[0].toUpperCase()}</th>`).join('');
+  el.innerHTML=`<table class="jtable"><thead><tr><th>DATA</th>${headers}<th>STATO</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="4" class="no-data">Nessun dato</td></tr>'}</tbody></table>`;
+}
+
+// Auto-refresh at midnight
+setInterval(()=>{
+  const newDate=getActiveDate();
+  render();
+},60000);
+
+updateStreak();
+render();
+})();
+</script>
+</body>
+</html>
